@@ -1157,7 +1157,7 @@ function WeeklySummaryCard({ weeks }) {
 // Journal rows
 // ============================================================
 
-function JournalRow({ row }) {
+function JournalRow({ row, showTopDivider }) {
   const [expanded, setExpanded] = useState(false);
   const retColor = row.ret >= 0 ? "#22946B" : "#E27D6B";
   const alphaColor = row.alpha != null
@@ -1177,6 +1177,13 @@ function JournalRow({ row }) {
 
   return (
     <div>
+      {showTopDivider && (
+        <div
+          className="mx-4 md:mx-6 my-2"
+          style={{ height: 1, background: "rgba(14,27,24,0.06)" }}
+          aria-hidden="true"
+        />
+      )}
       {/* Mobile — collapsed */}
       <div
         onClick={toggle}
@@ -1392,7 +1399,7 @@ function JournalRows({ rows }) {
         <div className="col-span-1 text-right">Result</div>
       </div>
       {rows.map((row, i) => (
-        <JournalRow key={i} row={row} />
+        <JournalRow key={i} row={row} showTopDivider={i > 0} />
       ))}
     </div>
   );

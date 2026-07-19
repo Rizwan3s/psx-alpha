@@ -1206,10 +1206,62 @@ function DashboardView({ time, marketOpen, onView, todayData, todayLoading, toda
 }
 
 function JournalView({ data, loading, error }) {
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [resultFilter, setResultFilter] = useState("all");
+  const [sectorFilter, setSectorFilter] = useState("all");
+
   if (loading) return <LoadingState message="Loading journal…" />;
   if (error) return <ErrorState error={error} />;
 
-  const stats = data || { totalPicks: 0, wins: 0, misses: 0, avgAlpha: 0, picks: [] };
+  const allPicks = data?.picks || [];
+
+  // Time filter helpers
+  const now = new Date();
+  const pkt = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+  const dayOfWeek = pkt.getUTCDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(pkt.getTime() - daysToMonday * 86400000);
+  const mondayStr = `${monday.getUTCFullYear()}-${String(monday.getUTCMonth() + 1).padStart(2, '0')}-${String(monday.getUTCDate()).padStart(2, '0')}`;
+  const fourWeeksAgo = new Date(pkt.getTime() - 28 * 86400000);
+  const fourWeeksAgoStr = `${fourWeeksAgo.getUTCFullYear()}-${String(fourWeeksAgo.getUTCMonth() + 1).padStart(2, '0')}-${String(fourWeeksAgo.getUTCDate()).padStart(2, '0')}`;
+
+  // Apply filters
+  const filteredPicks = allPicks.filter(p => {
+    if (timeFilter === "week" && p.dateSort < mondayStr) return false;
+    if (timeFilter === "4weeks" && p.dateSort < fourWeeksAgoStr) return false;
+    if (resultFilter === "beat" && !p.win) return false;
+    if (resultFilter === "miss" && p.win) return false;
+    if (sectorFilter !== "all" && (p.sector || '').toLowerCase() !== sectorFilter) return false;
+    return true;
+  });
+
+  // Compute filtered stats
+  const filteredWins = filteredPicks.filter(p => p.win).length;
+  const filteredMisses = filteredPicks.length - filteredWins;
+  const picksWithAlpha = filteredPicks.filter(p => p.alpha != null);
+  const filteredAvgAlpha = picksWithAlpha.length > 0
+    ? picksWithAlpha.reduce((s, p) => s + p.alpha, 0) / picksWithAlpha.length
+    : 0;
+
+  // Sector options from all picks (not filtered — so users can always switch)
+  const sectorsPresent = [...new Set(allPicks.map(p => p.sector).filter(Boolean))];
+
+  const timeOptions = [
+    { id: "all", label: "All time" },
+    { id: "week", label: "This week" },
+    { id: "4weeks", label: "Last 4 weeks" },
+  ];
+  const resultOptions = [
+    { id: "all", label: "All" },
+    { id: "beat", label: "Beats" },
+    { id: "miss", label: "Misses" },
+  ];
+  const sectorOptions = [
+    { id: "all", label: "All sectors" },
+    ...sectorsPresent.map(s => ({ id: s.toLowerCase(), label: s })),
+  ];
+
+  const isFiltered = timeFilter !== "all" || resultFilter !== "all" || sectorFilter !== "all";
 
   return (
     <>
@@ -1218,15 +1270,70 @@ function JournalView({ data, loading, error }) {
         title="All picks."
         subtitle="Every call the agent has made since tracking began."
       />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
-        <MiniStat label="Total picks" value={stats.totalPicks} />
-        <MiniStat label="Wins" value={stats.wins} tone="positive" />
-        <MiniStat label="Misses" value={stats.misses} tone="negative" />
+
+      {/* Filter groups */}
+      <div className="space-y-3 mb-6">
+        <div>
+          <div className="text-[9px] tracking-[0.22em] uppercase text-[#6E7F79] mb-2"
+            style={{ fontWeight: 700 }}>
+            Time
+          </div>
+          <FilterPills active={timeFilter} onChange={setTimeFilter} options={timeOptions} />
+        </div>
+        <div>
+          <div className="text-[9px] tracking-[0.22em] uppercase text-[#6E7F79] mb-2"
+            style={{ fontWeight: 700 }}>
+            Result
+          </div>
+          <FilterPills active={resultFilter} onChange={setResultFilter} options={resultOptions} />
+        </div>
+        {sectorsPresent.length > 1 && (
+          <div>
+            <div className="text-[9px] tracking-[0.22em] uppercase text-[#6E7F79] mb-2"
+              style={{ fontWeight: 700 }}>
+              Sector
+            </div>
+            <FilterPills active={sectorFilter} onChange={setSectorFilter} options={sectorOptions} />
+          </div>
+        )}
+      </div>
+
+      {/* Stats — reflect filtered set */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+        <MiniStat
+          label={isFiltered ? "Filtered picks" : "Total picks"}
+          value={filteredPicks.length}
+        />
+        <MiniStat label="Wins" value={filteredWins} tone="positive" />
+        <MiniStat label="Misses" value={filteredMisses} tone="negative" />
         <MiniStat label="Avg α"
-          value={`${stats.avgAlpha >= 0 ? "+" : ""}${stats.avgAlpha.toFixed(2)}`}
+          value={`${filteredAvgAlpha >= 0 ? "+" : ""}${filteredAvgAlpha.toFixed(2)}`}
           tone="signature" />
       </div>
-      <JournalRows rows={stats.picks} />
+
+      {/* Clear filters shortcut when a filter is active but result is empty */}
+      {isFiltered && filteredPicks.length === 0 ? (
+        <div className="bg-white p-8 text-center" style={{ borderRadius: 30 }}>
+          <div className="text-[13px] text-[#6E7F79] mb-3">
+            No picks match these filters.
+          </div>
+          <button
+            onClick={() => {
+              setTimeFilter("all");
+              setResultFilter("all");
+              setSectorFilter("all");
+            }}
+            className="text-[12px] rounded-full px-4 py-2 transition-colors"
+            style={{
+              background: "#F1F7F3", color: "#14735C",
+              fontWeight: 600, ...HEADING,
+            }}>
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        <JournalRows rows={filteredPicks} />
+      )}
     </>
   );
 }

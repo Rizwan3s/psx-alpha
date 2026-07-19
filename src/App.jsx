@@ -358,10 +358,10 @@ function SessionBanner({ message }) {
 }
 
 // ============================================================
-// Tooltip — click / hover popover
+// InfoTooltip — click / hover popover for explanations
 // ============================================================
 
-function Tooltip({ content, children }) {
+function InfoTooltip({ content, children }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -1248,9 +1248,9 @@ function JournalRows({ rows }) {
         <div className="col-span-2">Ticker</div>
         <div className="col-span-3 text-right">Return</div>
         <div className="col-span-3 text-right flex items-center justify-end gap-1">
-          <Tooltip content="Alpha (α) is your pick's return minus the KSE-100's return over the same period. Positive α means you beat the market.">
+          <InfoTooltip content="Alpha (α) is your pick's return minus the KSE-100's return over the same period. Positive α means you beat the market.">
             <span>α vs KSE-100</span>
-          </Tooltip>
+          </InfoTooltip>
         </div>
         <div className="col-span-2 text-right">Result</div>
       </div>

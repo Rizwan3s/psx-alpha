@@ -23,6 +23,8 @@ import {
   Check,
   Radio,
   ChevronRight,
+  Copy,
+  Mail,
 } from "lucide-react";
 
 // ============================================================
@@ -1906,10 +1908,336 @@ function ProfileView() {
 }
 
 // ============================================================
+// Login screen
+// ============================================================
+
+function LoginScreen({ onAuth }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [contactView, setContactView] = useState(null); // null | "forgot" | "signup"
+  const [submitting, setSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const CONTACT_EMAIL = "rizwanzahid897@gmail.com";
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTACT_EMAIL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (_) {
+      // clipboard blocked (older browser or insecure context) — silently ignore
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+
+    const expectedEmail = import.meta.env.VITE_APP_EMAIL;
+    const expectedPassword = import.meta.env.VITE_APP_PASSWORD;
+
+    if (!expectedEmail || !expectedPassword) {
+      setError("Auth not configured. Set VITE_APP_EMAIL and VITE_APP_PASSWORD.");
+      setSubmitting(false);
+      return;
+    }
+
+    // Small delay so the UI doesn't feel instant-jarring
+    setTimeout(() => {
+      if (
+        email.trim().toLowerCase() === expectedEmail.toLowerCase() &&
+        password === expectedPassword
+      ) {
+        onAuth();
+      } else {
+        setError("Invalid email or password");
+        setSubmitting(false);
+      }
+    }, 250);
+  };
+
+  // ---- Contact view (shown when user taps Forgot / Sign up) ----
+  if (contactView) {
+    const isForgot = contactView === "forgot";
+    const subject = isForgot
+      ? "PSX Alpha — password reset request"
+      : "PSX Alpha — account request";
+    const bodyLines = isForgot
+      ? "Hi Rizwan,%0D%0A%0D%0AI'd like to reset my PSX Alpha password. My registered email is:%0D%0A%0D%0A[your email]%0D%0A%0D%0AThanks."
+      : "Hi Rizwan,%0D%0A%0D%0AI'd like to request access to PSX Alpha.%0D%0A%0D%0AA bit about me:%0D%0A%0D%0A[introduce yourself]%0D%0A%0D%0AThanks.";
+    const mailtoHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${bodyLines}`;
+
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-8"
+        style={{ background: "#E8F1EC" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Lato:wght@300;400;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+          body { font-family: 'Lato', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+        `}</style>
+        <div className="w-full max-w-md bg-white p-8 md:p-10"
+          style={{ borderRadius: 30 }}>
+          {/* Icon */}
+          <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-6"
+            style={{ background: "#0E5E4A" }}>
+            <Mail size={22} color="#7FD1AE" strokeWidth={1.8} />
+          </div>
+
+          {/* Eyebrow + heading */}
+          <div className="text-center">
+            <div className="text-[10px] tracking-[0.22em] uppercase text-[#0E5E4A] mb-2"
+              style={{ fontWeight: 700 }}>
+              {isForgot ? "Forgot password" : "Request access"}
+            </div>
+            <div className="text-[22px] text-[#0E1B18] mb-3"
+              style={{ ...HEADING, fontWeight: 600 }}>
+              Get in touch
+            </div>
+            <div className="text-[13px] text-[#6E7F79] mb-6 leading-relaxed">
+              {isForgot
+                ? "Send an email with your registered address and I'll help you reset your password."
+                : "Access is invitation-only. Send an email introducing yourself and your interest in PSX Alpha."}
+            </div>
+          </div>
+
+          {/* Email contact card with copy button */}
+          <div className="p-4 mb-3" style={{ background: "#F1F7F3", borderRadius: 24 }}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] tracking-[0.15em] uppercase text-[#6E7F79] mb-1"
+                  style={{ fontWeight: 700, ...HEADING }}>
+                  Contact
+                </div>
+                <div className="text-[13px] md:text-[14px] text-[#0E1B18] truncate"
+                  style={{ ...MONO, fontWeight: 500 }}>
+                  {CONTACT_EMAIL}
+                </div>
+              </div>
+              <button
+                onClick={handleCopy}
+                className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all"
+                style={{
+                  background: copied ? "rgba(34,148,107,0.12)" : "rgba(255,255,255,0.7)",
+                }}
+                aria-label={copied ? "Copied" : "Copy email"}
+                title={copied ? "Copied" : "Copy email address"}
+              >
+                {copied
+                  ? <Check size={16} color="#22946B" strokeWidth={2.4} />
+                  : <Copy size={16} color="#0E5E4A" strokeWidth={1.8} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Compose email CTA */}
+          <a
+            href={mailtoHref}
+            className="flex items-center justify-center gap-2 w-full text-white text-[14px] py-3.5 transition-all hover:opacity-90"
+            style={{
+              background: "#0E5E4A",
+              borderRadius: 16,
+              fontWeight: 600,
+              ...HEADING,
+              textDecoration: "none",
+            }}>
+            <Mail size={16} strokeWidth={1.8} />
+            Open email app
+          </a>
+
+          {/* Response time */}
+          <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#6E7F79] mt-4">
+            <span className="inline-block w-1 h-1 rounded-full" style={{ background: "#22946B" }} />
+            Typical response within a day
+          </div>
+
+          {/* What to include hint */}
+          <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(14,27,24,0.06)" }}>
+            <div className="text-[10px] tracking-[0.15em] uppercase text-[#6E7F79] mb-2"
+              style={{ fontWeight: 700, ...HEADING }}>
+              What to include
+            </div>
+            <ul className="text-[12px] text-[#6E7F79] leading-relaxed space-y-1">
+              {isForgot ? (
+                <>
+                  <li>· The email you registered with</li>
+                  <li>· Approximate date you last signed in</li>
+                </>
+              ) : (
+                <>
+                  <li>· Your name and a bit about yourself</li>
+                  <li>· Your interest in PSX / the Pakistan market</li>
+                  <li>· The email you'd like to sign in with</li>
+                </>
+              )}
+            </ul>
+          </div>
+
+          {/* Back to sign in */}
+          <div className="text-center mt-6">
+            <button
+              onClick={() => { setContactView(null); setError(""); setCopied(false); }}
+              className="text-[13px] text-[#0E5E4A] hover:underline"
+              style={{ fontWeight: 600 }}>
+              ← Back to sign in
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- Sign in form ----
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: "#E8F1EC" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Lato:wght@300;400;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+        body { font-family: 'Lato', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+        .psx-input:focus { border-color: #7FD1AE !important; box-shadow: 0 0 0 4px rgba(127,209,174,0.18); }
+      `}</style>
+      <div className="w-full max-w-md bg-white p-8 md:p-10"
+        style={{ borderRadius: 30 }}>
+        {/* Brand mark */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
+            style={{ background: "#0E5E4A" }}>
+            <span className="text-[#7FD1AE] text-[26px] leading-none"
+              style={{ ...HEADING, fontWeight: 500 }}>α</span>
+          </div>
+          <div className="text-[17px] text-[#0E1B18] tracking-tight"
+            style={{ ...HEADING, fontWeight: 600 }}>
+            PSX Alpha
+          </div>
+          <div className="text-[10px] text-[#6E7F79] tracking-[0.15em] uppercase mt-0.5">
+            AI Analyst
+          </div>
+        </div>
+
+        <div className="text-[22px] text-[#0E1B18] mb-1"
+          style={{ ...HEADING, fontWeight: 600 }}>
+          Welcome back
+        </div>
+        <div className="text-[13px] text-[#6E7F79] mb-7">
+          Sign in to your dashboard
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-[10px] tracking-[0.15em] uppercase text-[#6E7F79] mb-1.5 block"
+              style={{ fontWeight: 700, ...HEADING }}>
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+              className="psx-input w-full px-4 py-3 text-[14px] text-[#0E1B18] outline-none transition-all"
+              style={{
+                background: "#F1F7F3",
+                borderRadius: 16,
+                border: "1px solid transparent",
+              }}
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] tracking-[0.15em] uppercase text-[#6E7F79] mb-1.5 block"
+              style={{ fontWeight: 700, ...HEADING }}>
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              className="psx-input w-full px-4 py-3 text-[14px] text-[#0E1B18] outline-none transition-all"
+              style={{
+                background: "#F1F7F3",
+                borderRadius: 16,
+                border: "1px solid transparent",
+              }}
+            />
+          </div>
+
+          {error && (
+            <div className="text-[12px] px-4 py-3 leading-relaxed"
+              style={{
+                background: "rgba(226,125,107,0.10)",
+                color: "#E27D6B",
+                borderRadius: 16,
+              }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full text-white text-[14px] py-3.5 transition-all hover:opacity-90 disabled:opacity-60"
+            style={{
+              background: "#0E5E4A",
+              borderRadius: 16,
+              fontWeight: 600,
+              ...HEADING,
+            }}>
+            {submitting ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+
+        <div className="flex items-center justify-between mt-6 text-[12px]">
+          <button
+            type="button"
+            onClick={() => { setContactView("forgot"); setError(""); }}
+            className="text-[#0E5E4A] hover:underline"
+            style={{ fontWeight: 500 }}>
+            Forgot password?
+          </button>
+          <button
+            type="button"
+            onClick={() => { setContactView("signup"); setError(""); }}
+            className="text-[#0E5E4A] hover:underline"
+            style={{ fontWeight: 500 }}>
+            Sign up
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // Main
 // ============================================================
 
 export default function PSXAlphaDashboard() {
+  const [authed, setAuthed] = useState(() => {
+    try {
+      return localStorage.getItem("psx-alpha-auth") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const handleAuth = () => {
+    try { localStorage.setItem("psx-alpha-auth", "1"); } catch {}
+    setAuthed(true);
+  };
+
+  if (!authed) {
+    return <LoginScreen onAuth={handleAuth} />;
+  }
+
+  return <AuthedDashboard />;
+}
+
+function AuthedDashboard() {
   const [view, setView] = useState("dashboard");
   const [time, setTime] = useState("");
   const [scrollState, setScrollState] = useState("initial");

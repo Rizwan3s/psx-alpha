@@ -835,6 +835,192 @@ function BestSectorCard({ sectors }) {
 }
 
 // ============================================================
+// Weekly Summary — top of Insights
+// ============================================================
+
+function PerformerCard({ label, pick, tone }) {
+  if (!pick) {
+    return (
+      <div className="bg-white p-6 flex-1" style={{ borderRadius: 30 }}>
+        <div className="text-[10px] tracking-[0.2em] uppercase text-[#6E7F79]"
+          style={{ fontWeight: 700 }}>
+          {label}
+        </div>
+        <div className="text-[13px] text-[#6E7F79] mt-6">No data</div>
+      </div>
+    );
+  }
+  const positive = pick.ret >= 0;
+  const accent = tone === 'best' ? '#22946B' : '#E27D6B';
+  const bg = tone === 'best' ? 'rgba(34,148,107,0.10)' : 'rgba(226,125,107,0.10)';
+  return (
+    <div className="bg-white p-6 flex-1" style={{ borderRadius: 30 }}>
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] tracking-[0.2em] uppercase"
+          style={{ fontWeight: 700, color: accent }}>
+          {label}
+        </div>
+        <span className="text-[9px] px-2.5 py-1 rounded-full tracking-wider uppercase"
+          style={{ background: bg, color: accent, fontWeight: 700, ...HEADING }}>
+          {pick.date}
+        </span>
+      </div>
+      <div className="mt-5 text-[26px] md:text-[28px] leading-none text-[#0E1B18]"
+        style={{ ...MONO, fontWeight: 500 }}>
+        {pick.ticker}
+      </div>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="text-[36px] md:text-[40px] tabular-nums leading-none"
+          style={{ ...HEADING, fontWeight: 500, letterSpacing: "-0.025em", color: accent }}>
+          {pick.ret >= 0 ? '+' : ''}{pick.ret.toFixed(2)}%
+        </span>
+        {pick.alpha != null && (
+          <span className="text-[13px] text-[#6E7F79]" style={MONO}>
+            α {pick.alpha >= 0 ? '+' : ''}{pick.alpha.toFixed(2)}
+          </span>
+        )}
+      </div>
+      <div className="mt-4 pt-4 text-[12px] text-[#6E7F79] tabular-nums"
+        style={{ borderTop: "1px dashed #D6E3DB", ...MONO }}>
+        {pick.entry?.toFixed(2)} → {pick.exit?.toFixed(2)}
+      </div>
+    </div>
+  );
+}
+
+function WeeklySummaryCard({ weeks }) {
+  const [selectedKey, setSelectedKey] = useState(weeks?.[0]?.weekKey || null);
+  const [open, setOpen] = useState(false);
+
+  if (!weeks || weeks.length === 0) {
+    return (
+      <div className="bg-white p-6 md:p-7 mb-8" style={{ borderRadius: 30 }}>
+        <div className="text-[10px] tracking-[0.2em] uppercase text-[#14735C]"
+          style={{ fontWeight: 700 }}>
+          Weekly summary
+        </div>
+        <div className="text-[13px] text-[#6E7F79] mt-4 py-4 text-center">
+          No completed weeks yet.
+        </div>
+      </div>
+    );
+  }
+
+  const selected = weeks.find(w => w.weekKey === selectedKey) || weeks[0];
+
+  return (
+    <section className="mb-10 md:mb-14">
+      <div className="flex items-end justify-between gap-4 mb-4 md:mb-5">
+        <div>
+          <div className="text-[10px] tracking-[0.22em] uppercase text-[#14735C] mb-1.5"
+            style={{ fontWeight: 700 }}>
+            Weekly review
+          </div>
+          <h2 className="text-[#0E1B18] tracking-tight leading-tight text-[22px] md:text-[28px]"
+            style={{ ...HEADING, fontWeight: 600, letterSpacing: "-0.02em" }}>
+            Best & worst this week
+          </h2>
+        </div>
+
+        {/* Week selector */}
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="flex items-center gap-2 rounded-full text-[12px] px-4 py-2.5 transition-all"
+            style={{
+              background: "#FFFFFF", color: "#0E1B18",
+              fontWeight: 500, ...HEADING,
+            }}>
+            {selected.weekLabel}
+            <ChevronRight
+              size={13}
+              style={{ transform: open ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
+            />
+          </button>
+
+          {open && (
+            <div className="absolute right-0 top-full mt-2 z-30 bg-white overflow-hidden"
+              style={{ borderRadius: 20, boxShadow: "0 12px 32px rgba(14,94,74,0.14)", minWidth: 260 }}>
+              {weeks.map(w => (
+                <button
+                  key={w.weekKey}
+                  onClick={() => { setSelectedKey(w.weekKey); setOpen(false); }}
+                  className="w-full text-left px-4 py-3 text-[13px] transition-colors hover:bg-[#F1F7F3]"
+                  style={{
+                    background: w.weekKey === selectedKey ? "#F1F7F3" : "transparent",
+                    color: "#0E1B18",
+                    fontWeight: w.weekKey === selectedKey ? 600 : 400,
+                    ...HEADING,
+                  }}>
+                  <div>{w.weekLabel}</div>
+                  <div className="text-[10px] text-[#6E7F79] mt-0.5 tabular-nums"
+                    style={MONO}>
+                    {w.totalPicks} picks · {w.wins}/{w.totalPicks} beats
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Best / Worst cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-4 md:mb-5">
+        <PerformerCard label="🏆 Best" pick={selected.best} tone="best" />
+        <PerformerCard label="📉 Worst" pick={selected.worst} tone="worst" />
+      </div>
+
+      {/* Stats strip */}
+      <div className="bg-white p-5 md:p-6 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6"
+        style={{ borderRadius: 30 }}>
+        <div>
+          <div className="text-[10px] tracking-[0.2em] uppercase text-[#6E7F79]"
+            style={{ fontWeight: 700 }}>
+            Picks
+          </div>
+          <div className="mt-2 tabular-nums text-[22px] md:text-[26px] text-[#0E1B18]"
+            style={{ ...HEADING, fontWeight: 500 }}>
+            {selected.totalPicks}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] tracking-[0.2em] uppercase text-[#6E7F79]"
+            style={{ fontWeight: 700 }}>
+            Beat rate
+          </div>
+          <div className="mt-2 tabular-nums text-[22px] md:text-[26px]"
+            style={{ ...HEADING, fontWeight: 500, color: "#0E5E4A" }}>
+            {selected.beatRate}%
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] tracking-[0.2em] uppercase text-[#6E7F79]"
+            style={{ fontWeight: 700 }}>
+            Avg return
+          </div>
+          <div className="mt-2 tabular-nums text-[22px] md:text-[26px]"
+            style={{ ...HEADING, fontWeight: 500,
+              color: selected.avgReturn >= 0 ? "#22946B" : "#E27D6B" }}>
+            {selected.avgReturn >= 0 ? '+' : ''}{selected.avgReturn.toFixed(2)}%
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] tracking-[0.2em] uppercase text-[#6E7F79]"
+            style={{ fontWeight: 700 }}>
+            Avg α
+          </div>
+          <div className="mt-2 tabular-nums text-[22px] md:text-[26px]"
+            style={{ ...HEADING, fontWeight: 500,
+              color: selected.avgAlpha >= 0 ? "#0E5E4A" : "#6E7F79" }}>
+            {selected.avgAlpha >= 0 ? '+' : ''}{selected.avgAlpha.toFixed(2)}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================
 // Journal rows
 // ============================================================
 
@@ -1056,6 +1242,7 @@ function InsightsView({ data, loading, error }) {
         title="The bigger picture."
         subtitle="How the AI has performed since tracking began."
       />
+      <WeeklySummaryCard weeks={data?.weeks} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
         <PerformanceCard cumulative={data?.cumulative} />
         <WeeklyBarsCard weeklyReturns={data?.weeklyReturns} />

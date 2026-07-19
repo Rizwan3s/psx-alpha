@@ -406,6 +406,9 @@ function ViewHeader({ eyebrow, title, subtitle }) {
 }
 
 function Greeting({ time, marketOpen }) {
+  const todayStr = new Date().toLocaleDateString("en-GB", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
   return (
     <div className="mb-6 md:mb-8">
       <h1 className="text-[#0E1B18] tracking-tight leading-[0.95] text-[42px] md:text-[56px] lg:text-[64px]"
@@ -413,7 +416,7 @@ function Greeting({ time, marketOpen }) {
         Hello, Rizwan.
       </h1>
       <div className="mt-3 flex items-center flex-wrap gap-x-3 gap-y-1 text-[13px] text-[#6E7F79]">
-        <span>Sunday, 19 July 2026</span>
+        <span>{todayStr}</span>
         <span className="w-1 h-1 rounded-full bg-[#C4D2CB]" />
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full"
@@ -431,9 +434,24 @@ function Greeting({ time, marketOpen }) {
 
 function LoadingState({ message = "Loading…" }) {
   return (
-    <div className="py-20 text-center text-[#6E7F79]"
-      style={{ ...HEADING, fontWeight: 500 }}>
-      {message}
+    <div aria-label={message}>
+      {/* Hero-shaped skeleton */}
+      <div className="p-6 md:p-8 mb-4 md:mb-5"
+        style={{ background: "#FFFFFF", borderRadius: 30 }}>
+        <div className="psx-skel h-3 w-32 mb-4" />
+        <div className="psx-skel h-16 w-64 mb-3" />
+        <div className="psx-skel h-3 w-44 mb-6" />
+        <div className="psx-skel h-40 w-full" style={{ borderRadius: 20 }} />
+      </div>
+      {/* Rows-shaped skeleton */}
+      <div className="bg-white p-4 md:p-5" style={{ borderRadius: 30 }}>
+        <div className="psx-skel h-3 w-24 mb-4" />
+        <div className="space-y-2">
+          {[1,2,3].map(i => (
+            <div key={i} className="psx-skel h-14 w-full" style={{ borderRadius: 20 }} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -445,6 +463,26 @@ function ErrorState({ error }) {
         Couldn't reach the API
       </div>
       <div className="text-[#6E7F79] text-sm" style={MONO}>{error}</div>
+    </div>
+  );
+}
+
+// Empty state used inside chart cards when there's no data to draw yet.
+// Sits in the chart area so the card keeps its shape.
+function EmptyChartMessage({ primary, secondary, compact = false }) {
+  return (
+    <div className={`flex flex-col items-center justify-center text-center px-4 ${compact ? "h-40" : "h-56 md:h-64"}`}
+      style={{ background: "#F1F7F3", borderRadius: 24 }}>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3"
+        style={{ background: "#FFFFFF" }}>
+        <span className="w-2 h-2 rounded-full" style={{ background: "#7FD1AE" }} />
+      </div>
+      <div className="text-[13px] text-[#0E1B18]" style={{ ...HEADING, fontWeight: 600 }}>
+        {primary}
+      </div>
+      <div className="text-[11px] text-[#6E7F79] mt-1 max-w-xs leading-relaxed">
+        {secondary}
+      </div>
     </div>
   );
 }
@@ -907,7 +945,8 @@ function MiniStat({ label, value, sub, tone = "default" }) {
 // ============================================================
 
 function PerformanceCard({ cumulative }) {
-  const data = cumulative && cumulative.length > 0 ? cumulative : [{ day: '—', ai: 0, kse: 0 }];
+  const hasData = cumulative && cumulative.length > 0;
+  const data = hasData ? cumulative : [];
   return (
     <div className="bg-white p-6 md:p-7" style={{ borderRadius: 30 }}>
       <div className="mb-5">
@@ -920,39 +959,49 @@ function PerformanceCard({ cumulative }) {
           AI picks vs KSE-100
         </div>
         <div className="text-[11px] text-[#6E7F79] mt-1">
-          Since tracking began · {data.length} week{data.length === 1 ? '' : 's'}
+          {hasData
+            ? `Since tracking began · ${data.length} week${data.length === 1 ? '' : 's'}`
+            : "Waiting for the first completed week"}
         </div>
       </div>
-      <div className="h-56 md:h-64 -ml-3">
-        <ResponsiveContainer>
-          <LineChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: -10 }}>
-            <XAxis dataKey="day" stroke="#6E7F79"
-              tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
-              axisLine={false} tickLine={false} />
-            <YAxis stroke="#6E7F79"
-              tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
-              axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
-            <Tooltip contentStyle={{
-              background: "#0E5E4A", border: "none", borderRadius: 20,
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-              color: "#F1F7F3", padding: "10px 14px",
-            }} labelStyle={{ color: "#7FD1AE", marginBottom: 4 }}
-              itemStyle={{ color: "#F1F7F3" }} />
-            <ReferenceLine y={0} stroke="#D6E3DB" strokeDasharray="2 3" />
-            <Line type="monotone" dataKey="kse" stroke="#C4D2CB"
-              strokeWidth={1.5} dot={false} strokeDasharray="4 4" animationDuration={1600} />
-            <Line type="monotone" dataKey="ai" stroke="#0E5E4A" strokeWidth={2.5}
-              animationDuration={1600}
-              dot={{ fill: "#7FD1AE", stroke: "#0E5E4A", strokeWidth: 2, r: 4 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      {hasData ? (
+        <div className="h-56 md:h-64 -ml-3">
+          <ResponsiveContainer>
+            <LineChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: -10 }}>
+              <XAxis dataKey="day" stroke="#6E7F79"
+                tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
+                axisLine={false} tickLine={false} />
+              <YAxis stroke="#6E7F79"
+                tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
+                axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+              <Tooltip contentStyle={{
+                background: "#0E5E4A", border: "none", borderRadius: 20,
+                fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+                color: "#F1F7F3", padding: "10px 14px",
+              }} labelStyle={{ color: "#7FD1AE", marginBottom: 4 }}
+                itemStyle={{ color: "#F1F7F3" }} />
+              <ReferenceLine y={0} stroke="#D6E3DB" strokeDasharray="2 3" />
+              <Line type="monotone" dataKey="kse" stroke="#C4D2CB"
+                strokeWidth={1.5} dot={false} strokeDasharray="4 4" animationDuration={1600} />
+              <Line type="monotone" dataKey="ai" stroke="#0E5E4A" strokeWidth={2.5}
+                animationDuration={1600}
+                dot={{ fill: "#7FD1AE", stroke: "#0E5E4A", strokeWidth: 2, r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <EmptyChartMessage
+          primary="First week in progress"
+          secondary="This chart plots weekly cumulative return once picks complete."
+        />
+      )}
     </div>
   );
 }
 
 function WeeklyBarsCard({ weeklyReturns }) {
-  const data = weeklyReturns && weeklyReturns.length > 0 ? weeklyReturns : [];
+  const hasData = weeklyReturns && weeklyReturns.length > 0;
+  const data = hasData ? weeklyReturns : [];
   return (
     <div className="bg-white p-6 md:p-7" style={{ borderRadius: 30 }}>
       <div className="mb-5">
@@ -965,31 +1014,38 @@ function WeeklyBarsCard({ weeklyReturns }) {
           Daily returns
         </div>
       </div>
-      <div className="h-56 md:h-64 -ml-3">
-        <ResponsiveContainer>
-          <BarChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: -10 }}>
-            <XAxis dataKey="day" stroke="#6E7F79"
-              tick={{ fontSize: 11, fontFamily: "JetBrains Mono" }}
-              axisLine={false} tickLine={false} />
-            <YAxis stroke="#6E7F79"
-              tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
-              axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
-            <Tooltip cursor={{ fill: "rgba(127,209,174,0.10)" }}
-              contentStyle={{
-                background: "#0E5E4A", border: "none", borderRadius: 20,
-                fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-                color: "#F1F7F3", padding: "10px 14px",
-              }} labelStyle={{ color: "#7FD1AE", marginBottom: 4 }}
-              itemStyle={{ color: "#F1F7F3" }} />
-            <ReferenceLine y={0} stroke="#D6E3DB" />
-            <Bar dataKey="ret" radius={14} animationDuration={1400}>
-              {data.map((d, i) => (
-                <Cell key={i} fill={d.ret >= 0 ? "#22946B" : "#E27D6B"} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {hasData ? (
+        <div className="h-56 md:h-64 -ml-3">
+          <ResponsiveContainer>
+            <BarChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: -10 }}>
+              <XAxis dataKey="day" stroke="#6E7F79"
+                tick={{ fontSize: 11, fontFamily: "JetBrains Mono" }}
+                axisLine={false} tickLine={false} />
+              <YAxis stroke="#6E7F79"
+                tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
+                axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+              <Tooltip cursor={{ fill: "rgba(127,209,174,0.10)" }}
+                contentStyle={{
+                  background: "#0E5E4A", border: "none", borderRadius: 20,
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+                  color: "#F1F7F3", padding: "10px 14px",
+                }} labelStyle={{ color: "#7FD1AE", marginBottom: 4 }}
+                itemStyle={{ color: "#F1F7F3" }} />
+              <ReferenceLine y={0} stroke="#D6E3DB" />
+              <Bar dataKey="ret" radius={14} animationDuration={1400}>
+                {data.map((d, i) => (
+                  <Cell key={i} fill={d.ret >= 0 ? "#22946B" : "#E27D6B"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <EmptyChartMessage
+          primary="No daily returns yet"
+          secondary="Each bar represents one trading day's realized return. Bars appear after picks complete."
+        />
+      )}
     </div>
   );
 }
@@ -1028,7 +1084,9 @@ function BeatRateRing({ beatRate }) {
           Picks that beat KSE-100
         </div>
         <div className="text-[13px] text-[#6E7F79] mt-2 leading-relaxed">
-          {wins} of {total} picks have out-performed the index on their trading day. Target for the 8-week trial is 55%.
+          {total === 0
+            ? "No completed picks yet. First data lands after the next trading day's exit prices are logged."
+            : `${wins} of ${total} picks have out-performed the index on their trading day. Target for the 8-week trial is 55%.`}
         </div>
       </div>
     </div>
@@ -1051,9 +1109,11 @@ function BestSectorCard({ sectors }) {
       </div>
       <div className="space-y-4">
         {data.length === 0 ? (
-          <div className="text-[13px] text-[#6E7F79] py-4 text-center">
-            Not enough data yet.
-          </div>
+          <EmptyChartMessage
+            compact
+            primary="No sector data yet"
+            secondary="This ranks sectors by average return once picks complete across at least a few days."
+          />
         ) : data.map((s) => (
           <div key={s.name}>
             <div className="flex items-baseline justify-between mb-1.5">
@@ -1786,7 +1846,7 @@ function InsightsView({ data, loading, error }) {
   );
 }
 
-function ProfileView() {
+function ProfileView({ onSignOut }) {
   return (
     <>
       <ViewHeader
@@ -1902,6 +1962,29 @@ function ProfileView() {
             </span>
           </div>
         </div>
+      </div>
+      <div className="mt-4 md:mt-5 flex items-center justify-between p-5 md:p-6 bg-white"
+        style={{ borderRadius: 30 }}>
+        <div>
+          <div className="text-[10px] tracking-[0.15em] uppercase text-[#6E7F79]"
+            style={{ fontWeight: 700, ...HEADING }}>
+            Session
+          </div>
+          <div className="text-[14px] text-[#0E1B18] mt-1">
+            Signed in on this device
+          </div>
+        </div>
+        <button
+          onClick={onSignOut}
+          className="text-[13px] px-4 py-2.5 rounded-full transition-all hover:opacity-90"
+          style={{
+            background: "rgba(226,125,107,0.10)",
+            color: "#E27D6B",
+            fontWeight: 600,
+            ...HEADING,
+          }}>
+          Sign out
+        </button>
       </div>
     </>
   );
@@ -2230,14 +2313,19 @@ export default function PSXAlphaDashboard() {
     setAuthed(true);
   };
 
+  const handleSignOut = () => {
+    try { localStorage.removeItem("psx-alpha-auth"); } catch {}
+    setAuthed(false);
+  };
+
   if (!authed) {
     return <LoginScreen onAuth={handleAuth} />;
   }
 
-  return <AuthedDashboard />;
+  return <AuthedDashboard onSignOut={handleSignOut} />;
 }
 
-function AuthedDashboard() {
+function AuthedDashboard({ onSignOut }) {
   const [view, setView] = useState("dashboard");
   const [time, setTime] = useState("");
   const [scrollState, setScrollState] = useState("initial");
@@ -2313,6 +2401,16 @@ function AuthedDashboard() {
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-view-in { animation: viewIn 0.5s cubic-bezier(.2,.7,.2,1); }
+        @keyframes psxShimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        .psx-skel {
+          background: linear-gradient(90deg, #F1F7F3 0%, #E8F1EC 50%, #F1F7F3 100%);
+          background-size: 200% 100%;
+          animation: psxShimmer 1.6s ease-in-out infinite;
+          border-radius: 12px;
+        }
         .beat-rate-text { text-align: center; }
         @media (min-width: 768px) {
           .beat-rate-text { text-align: left; }
@@ -2354,7 +2452,7 @@ function AuthedDashboard() {
               error={insights.error}
             />
           )}
-          {view === "profile" && <ProfileView />}
+          {view === "profile" && <ProfileView onSignOut={onSignOut} />}
         </main>
 
         <footer className="mt-12 pt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[11px] text-[#6E7F79]">

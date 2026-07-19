@@ -147,9 +147,7 @@ const NAV = [
 
 function Header({ view, onView, time, marketOpen }) {
   return (
-    <header className="flex items-center justify-between mb-6 md:mb-8 gap-4 md:sticky md:top-0 md:z-30 md:py-3"
-    style={{ background: "#E8F1EC" }}
-    >
+    <header className="flex items-center justify-between mb-6 md:mb-8 gap-4">
       <div className="flex items-center gap-2.5 shrink-0">
         <div
           className="w-11 h-11 rounded-full flex items-center justify-center"
@@ -240,6 +238,102 @@ function BottomNav({ view, onView }) {
         );
       })}
     </nav>
+  );
+}
+
+// Floating pill nav — desktop only. Appears when the user has scrolled past
+// the original header. Collapsed (nav only) when scrolling down, expanded
+// (logo + nav + status) when scrolling up. Frosted glass background.
+function FloatingPillNav({ view, onView, scrollState, marketOpen, time }) {
+  const visible = scrollState !== "initial";
+  const isExpanded = scrollState === "expanded";
+
+  return (
+    <div
+      className="hidden md:flex fixed left-1/2 top-4 z-40 items-center gap-1 rounded-full p-1.5 transition-all duration-300 ease-out"
+      style={{
+        transform: `translateX(-50%) translateY(${visible ? "0" : "-120%"})`,
+        opacity: visible ? 1 : 0,
+        pointerEvents: visible ? "auto" : "none",
+        background: "rgba(255,255,255,0.65)",
+        backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        border: "1px solid rgba(255,255,255,0.7)",
+        boxShadow: "0 10px 30px rgba(14,27,24,0.08)",
+      }}
+    >
+      {/* Logo — collapses when scrolling down, expands when scrolling up */}
+      <div
+        className="flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out"
+        style={{
+          maxWidth: isExpanded ? 200 : 0,
+          opacity: isExpanded ? 1 : 0,
+          paddingLeft: isExpanded ? 8 : 0,
+          paddingRight: isExpanded ? 4 : 0,
+        }}
+      >
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: "#0E5E4A" }}
+        >
+          <span className="text-[#7FD1AE] text-[16px] leading-none"
+            style={{ ...HEADING, fontWeight: 500 }}>
+            α
+          </span>
+        </div>
+        <div className="text-[13px] text-[#0E1B18] tracking-tight shrink-0"
+          style={{ ...HEADING, fontWeight: 600 }}>
+          PSX Alpha
+        </div>
+      </div>
+
+      {/* Nav — always visible, anchors the pill */}
+      <nav className="flex items-center gap-1 shrink-0">
+        {NAV.map((n) => {
+          const active = view === n.id;
+          return (
+            <button
+              key={n.id}
+              onClick={() => onView(n.id)}
+              className="rounded-full px-4 py-2 text-[13px] transition-all duration-300"
+              style={{
+                background: active ? "#0E5E4A" : "transparent",
+                color: active ? "#FFFFFF" : "#0E1B18",
+                fontWeight: active ? 600 : 400,
+                ...HEADING,
+              }}>
+              {n.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Status pill — collapses when scrolling down, expands when scrolling up */}
+      <div
+        className="flex items-center overflow-hidden transition-all duration-300 ease-out"
+        style={{
+          maxWidth: isExpanded ? 220 : 0,
+          opacity: isExpanded ? 1 : 0,
+          paddingLeft: isExpanded ? 4 : 0,
+          paddingRight: isExpanded ? 8 : 0,
+        }}
+      >
+        <div className="flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] shrink-0"
+          style={{ background: "rgba(255,255,255,0.55)" }}>
+          <span className="relative flex h-2 w-2">
+            {marketOpen && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-70"
+                style={{ background: "#22946B" }} />
+            )}
+            <span className="relative inline-flex rounded-full h-2 w-2"
+              style={{ background: marketOpen ? "#22946B" : "#6E7F79" }} />
+          </span>
+          <span className="text-[#0E1B18] whitespace-nowrap">
+            {marketOpen ? "Open" : "Closed"} · {time}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1806,6 +1900,8 @@ function ProfileView() {
 export default function PSXAlphaDashboard() {
   const [view, setView] = useState("dashboard");
   const [time, setTime] = useState("");
+  const [scrollState, setScrollState] = useState("initial");
+  const lastScrollY = useRef(0);
 
   const today    = useApi(import.meta.env.VITE_API_URL);
   const journal  = useApi(import.meta.env.VITE_JOURNAL_URL);
@@ -1827,9 +1923,46 @@ export default function PSXAlphaDashboard() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [view]);
 
+  // Scroll-driven state for the floating pill nav:
+  //  - initial:   at top of page, original header visible, pill hidden
+  //  - collapsed: scrolled down, pill visible with nav only
+  //  - expanded:  scrolled down + scrolling up, pill expands to include logo + status
+  useEffect(() => {
+    const HEADER_HEIGHT = 120;     // approx height of original header + top padding
+    const DELTA_THRESHOLD = 6;     // ignore trackpad/mouse jitter under this
+
+    const handleScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastScrollY.current;
+
+      if (y < HEADER_HEIGHT) {
+        setScrollState("initial");
+      } else if (Math.abs(delta) > DELTA_THRESHOLD) {
+        setScrollState(delta > 0 ? "collapsed" : "expanded");
+      }
+      lastScrollY.current = y;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Reset to initial state when switching views (since scrollTo top happens)
+  useEffect(() => {
+    setScrollState("initial");
+    lastScrollY.current = 0;
+  }, [view]);
+
   return (
     <div className="min-h-screen pb-44 md:pb-10"
       style={{ background: "#E8F1EC", color: "#0E1B18" }}>
+      <FloatingPillNav
+        view={view}
+        onView={setView}
+        scrollState={scrollState}
+        marketOpen={today.data?.marketOpen ?? false}
+        time={time}
+      />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Lato:wght@300;400;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
         body { font-family: 'Lato', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }

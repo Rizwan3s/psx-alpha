@@ -242,19 +242,26 @@ function BottomNav({ view, onView }) {
 }
 
 // Floating pill nav — desktop only. Appears when the user has scrolled past
-// the original header. Collapsed (nav only) when scrolling down, expanded
-// (logo + nav + status) when scrolling up. Frosted glass background.
+// the original header. Collapsed (nav only, centered narrow) when scrolling
+// down, expanded (logo far-left · nav center · status far-right, spanning
+// the viewport) when scrolling up. Frosted glass background.
 function FloatingPillNav({ view, onView, scrollState, marketOpen, time }) {
   const visible = scrollState !== "initial";
   const isExpanded = scrollState === "expanded";
 
   return (
     <div
-      className="hidden md:flex fixed left-1/2 top-4 z-40 items-center gap-1 rounded-full p-1.5 transition-all duration-300 ease-out"
+      className="hidden md:flex fixed top-4 z-40 items-center rounded-full p-1.5 transition-all duration-300 ease-out"
       style={{
+        left: "50%",
         transform: `translateX(-50%) translateY(${visible ? "0" : "-120%"})`,
         opacity: visible ? 1 : 0,
         pointerEvents: visible ? "auto" : "none",
+        // min-width drives the sideways expansion. Collapsed: 0 → pill shrinks to
+        // nav content. Expanded: calc(100vw - 4rem) → pill spans viewport minus
+        // the wrapper's md:px-8 gutter, matching the original header alignment.
+        minWidth: isExpanded ? "calc(100vw - 4rem)" : 0,
+        maxWidth: "calc(100vw - 4rem)",
         background: "rgba(255,255,255,0.65)",
         backdropFilter: "blur(20px) saturate(180%)",
         WebkitBackdropFilter: "blur(20px) saturate(180%)",
@@ -262,11 +269,11 @@ function FloatingPillNav({ view, onView, scrollState, marketOpen, time }) {
         boxShadow: "0 10px 30px rgba(14,27,24,0.08)",
       }}
     >
-      {/* Logo — collapses when scrolling down, expands when scrolling up */}
+      {/* Logo — anchored far left, slides in when expanded */}
       <div
         className="flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out"
         style={{
-          maxWidth: isExpanded ? 200 : 0,
+          maxWidth: isExpanded ? 240 : 0,
           opacity: isExpanded ? 1 : 0,
           paddingLeft: isExpanded ? 8 : 0,
           paddingRight: isExpanded ? 4 : 0,
@@ -281,14 +288,19 @@ function FloatingPillNav({ view, onView, scrollState, marketOpen, time }) {
             α
           </span>
         </div>
-        <div className="text-[13px] text-[#0E1B18] tracking-tight shrink-0"
-          style={{ ...HEADING, fontWeight: 600 }}>
-          PSX Alpha
+        <div className="leading-tight shrink-0">
+          <div className="text-[13px] text-[#0E1B18] tracking-tight"
+            style={{ ...HEADING, fontWeight: 600 }}>
+            PSX Alpha
+          </div>
+          <div className="text-[9px] text-[#6E7F79] tracking-[0.15em] uppercase">
+            AI Analyst
+          </div>
         </div>
       </div>
 
-      {/* Nav — always visible, anchors the pill */}
-      <nav className="flex items-center gap-1 shrink-0">
+      {/* Nav — always visible. Auto margins push it to center of remaining space. */}
+      <nav className="flex items-center gap-1 shrink-0" style={{ marginLeft: "auto", marginRight: "auto" }}>
         {NAV.map((n) => {
           const active = view === n.id;
           return (
@@ -308,11 +320,11 @@ function FloatingPillNav({ view, onView, scrollState, marketOpen, time }) {
         })}
       </nav>
 
-      {/* Status pill — collapses when scrolling down, expands when scrolling up */}
+      {/* Status pill — anchored far right, slides in when expanded */}
       <div
         className="flex items-center overflow-hidden transition-all duration-300 ease-out"
         style={{
-          maxWidth: isExpanded ? 220 : 0,
+          maxWidth: isExpanded ? 240 : 0,
           opacity: isExpanded ? 1 : 0,
           paddingLeft: isExpanded ? 4 : 0,
           paddingRight: isExpanded ? 8 : 0,

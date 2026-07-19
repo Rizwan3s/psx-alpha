@@ -594,6 +594,63 @@ function FilterPills({ active, onChange, options }) {
   );
 }
 
+function FilterDropdown({ label, active, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const activeOption = options.find(o => o.id === active);
+  const isDefault = active === options[0]?.id;
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 rounded-full text-[12px] px-4 py-2.5 transition-all"
+        style={{
+          background: isDefault ? "#FFFFFF" : "#0E5E4A",
+          color: isDefault ? "#0E1B18" : "#F1F7F3",
+          fontWeight: isDefault ? 500 : 600,
+          ...HEADING,
+        }}>
+        <span style={{ opacity: 0.7 }}>{label}:</span>
+        <span>{activeOption?.label}</span>
+        <ChevronRight
+          size={13}
+          style={{ transform: open ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-2 z-30 bg-white overflow-hidden"
+          style={{ borderRadius: 20, boxShadow: "0 12px 32px rgba(14,94,74,0.14)", minWidth: 200 }}>
+          {options.map(opt => (
+            <button
+              key={opt.id}
+              onClick={() => { onChange(opt.id); setOpen(false); }}
+              className="w-full text-left px-4 py-3 text-[13px] transition-colors hover:bg-[#F1F7F3]"
+              style={{
+                background: opt.id === active ? "#F1F7F3" : "transparent",
+                color: "#0E1B18",
+                fontWeight: opt.id === active ? 600 : 400,
+                ...HEADING,
+              }}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TodayPicks({ picks: incomingPicks }) {
   const [filter, setFilter] = useState("all");
   const picks = incomingPicks || [];
@@ -1271,30 +1328,27 @@ function JournalView({ data, loading, error }) {
         subtitle="Every call the agent has made since tracking began."
       />
 
-      {/* Filter groups */}
-      <div className="space-y-3 mb-6">
-        <div>
-          <div className="text-[9px] tracking-[0.22em] uppercase text-[#6E7F79] mb-2"
-            style={{ fontWeight: 700 }}>
-            Time
-          </div>
-          <FilterPills active={timeFilter} onChange={setTimeFilter} options={timeOptions} />
-        </div>
-        <div>
-          <div className="text-[9px] tracking-[0.22em] uppercase text-[#6E7F79] mb-2"
-            style={{ fontWeight: 700 }}>
-            Result
-          </div>
-          <FilterPills active={resultFilter} onChange={setResultFilter} options={resultOptions} />
-        </div>
+      {/* Filter dropdowns */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <FilterDropdown label="Time" active={timeFilter} options={timeOptions} onChange={setTimeFilter} />
+        <FilterDropdown label="Result" active={resultFilter} options={resultOptions} onChange={setResultFilter} />
         {sectorsPresent.length > 1 && (
-          <div>
-            <div className="text-[9px] tracking-[0.22em] uppercase text-[#6E7F79] mb-2"
-              style={{ fontWeight: 700 }}>
-              Sector
-            </div>
-            <FilterPills active={sectorFilter} onChange={setSectorFilter} options={sectorOptions} />
-          </div>
+          <FilterDropdown label="Sector" active={sectorFilter} options={sectorOptions} onChange={setSectorFilter} />
+        )}
+        {isFiltered && (
+          <button
+            onClick={() => {
+              setTimeFilter("all");
+              setResultFilter("all");
+              setSectorFilter("all");
+            }}
+            className="text-[12px] rounded-full px-4 py-2.5 transition-colors"
+            style={{
+              background: "transparent", color: "#14735C",
+              fontWeight: 600, ...HEADING,
+            }}>
+            Clear all
+          </button>
         )}
       </div>
 

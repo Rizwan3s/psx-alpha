@@ -200,8 +200,8 @@ function Header({ view, onView, time, marketOpen }) {
           <span className="relative inline-flex rounded-full h-2 w-2"
             style={{ background: marketOpen ? "#22946B" : "#6E7F79" }} />
         </span>
-        <span className="text-[#0E1B18]">
-          {marketOpen ? "Open" : "Closed"} · {time}
+        <span className="text-[#0E1B18] tabular-nums" style={MONO}>
+          {time}
         </span>
       </div>
     </header>
@@ -340,8 +340,8 @@ function FloatingPillNav({ view, onView, scrollState, marketOpen, time }) {
             <span className="relative inline-flex rounded-full h-2 w-2"
               style={{ background: marketOpen ? "#22946B" : "#6E7F79" }} />
           </span>
-          <span className="text-[#0E1B18] whitespace-nowrap">
-            {marketOpen ? "Open" : "Closed"} · {time}
+          <span className="text-[#0E1B18] whitespace-nowrap tabular-nums" style={MONO}>
+            {time}
           </span>
         </div>
       </div>
@@ -589,16 +589,16 @@ function AlphaHero({ data }) {
           </div>
         </div>
 
-        <div className="mt-8 md:mt-10 flex items-baseline gap-1 md:gap-2">
-          <span className="text-white/70 text-[36px] sm:text-[44px] md:text-[64px] lg:text-[72px]"
+        <div className="mt-6 md:mt-8 flex items-baseline gap-1 md:gap-2">
+          <span className="text-white/70 text-[28px] sm:text-[34px] md:text-[44px] lg:text-[52px]"
             style={{ ...HEADING, fontWeight: 300, lineHeight: 0.9 }}>
             {portfolioReturn >= 0 ? '+' : '−'}
           </span>
-          <span className="text-white tabular-nums text-[88px] sm:text-[120px] md:text-[168px] lg:text-[192px]"
+          <span className="text-white tabular-nums text-[64px] sm:text-[84px] md:text-[112px] lg:text-[128px]"
             style={{ ...HEADING, fontWeight: 400, letterSpacing: "-0.045em", lineHeight: 0.85 }}>
             {Math.abs(alphaVal).toFixed(2)}
           </span>
-          <span className="text-white/70 text-[36px] sm:text-[44px] md:text-[64px] lg:text-[72px]"
+          <span className="text-white/70 text-[28px] sm:text-[34px] md:text-[44px] lg:text-[52px]"
             style={{ ...HEADING, fontWeight: 300, lineHeight: 0.9 }}>
             %
           </span>
@@ -1922,8 +1922,8 @@ export default function PSXAlphaDashboard() {
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      setTime(now.toLocaleTimeString("en-GB", {
-        hour: "2-digit", minute: "2-digit", hour12: false,
+      setTime(now.toLocaleTimeString("en-US", {
+        hour: "numeric", minute: "2-digit", hour12: true,
       }));
     };
     tick();

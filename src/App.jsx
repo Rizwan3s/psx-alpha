@@ -1158,15 +1158,34 @@ function WeeklySummaryCard({ weeks }) {
 // ============================================================
 
 function JournalRow({ row }) {
+  const [expanded, setExpanded] = useState(false);
   const retColor = row.ret >= 0 ? "#22946B" : "#E27D6B";
   const alphaColor = row.alpha != null
     ? (row.alpha >= 0 ? "#0E5E4A" : "#6E7F79")
     : "#6E7F79";
+
+  const hasPrices = row.entry != null && row.exit != null;
+  const priceChange = hasPrices ? row.exit - row.entry : null;
+
+  const alphaLabel = row.alpha == null
+    ? "Waiting on KSE-100 data"
+    : row.alpha >= 0
+      ? `Beat KSE-100 by ${row.alpha.toFixed(2)}%`
+      : `Trailed KSE-100 by ${Math.abs(row.alpha).toFixed(2)}%`;
+
+  const toggle = () => setExpanded(v => !v);
+
   return (
-    <>
-      {/* Mobile */}
-      <div className="md:hidden p-4 hover:bg-[#F1F7F3] transition-colors"
-        style={{ borderRadius: 30 }}>
+    <div>
+      {/* Mobile — collapsed */}
+      <div
+        onClick={toggle}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } }}
+        className="md:hidden p-4 hover:bg-[#F1F7F3] transition-colors cursor-pointer select-none"
+        style={{ borderRadius: 30 }}
+      >
         <div className="flex items-center justify-between gap-2">
           <div className="text-[16px] text-[#0E1B18] shrink-0"
             style={{ ...MONO, fontWeight: 500 }}>
@@ -1184,9 +1203,22 @@ function JournalRow({ row }) {
               }}>
               {row.win ? "Beat" : "Miss"}
             </span>
+            <ChevronRight
+              size={14}
+              style={{
+                color: "#6E7F79",
+                transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+                transition: "transform 0.15s ease-out",
+              }}
+            />
           </div>
         </div>
-        <div className="flex items-center justify-between gap-2 mt-2">
+        <div className="mt-2 tabular-nums text-[12px] text-[#0E1B18]" style={{ ...MONO, fontWeight: 500 }}>
+          {hasPrices
+            ? `${row.entry.toFixed(2)} → ${row.exit.toFixed(2)}`
+            : <span className="text-[#6E7F79]" style={{ fontFamily: "'Lato', sans-serif", fontWeight: 400 }}>prices pending</span>}
+        </div>
+        <div className="flex items-center justify-between gap-2 mt-1">
           <span className="text-[11px] text-[#6E7F79] tabular-nums" style={MONO}>
             {row.date}
           </span>
@@ -1200,8 +1232,14 @@ function JournalRow({ row }) {
         </div>
       </div>
 
-      {/* Desktop */}
-      <div className="hidden md:grid rounded-full grid-cols-12 gap-3 px-6 py-4 items-center hover:bg-[#F1F7F3] transition-colors">
+      {/* Desktop — collapsed */}
+      <div
+        onClick={toggle}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } }}
+        className="hidden md:grid rounded-full grid-cols-12 gap-3 px-6 py-4 items-center hover:bg-[#F1F7F3] transition-colors cursor-pointer select-none"
+      >
         <div className="col-span-2 text-[12px] text-[#6E7F79] tabular-nums" style={MONO}>
           {row.date}
         </div>
@@ -1209,15 +1247,21 @@ function JournalRow({ row }) {
           style={{ ...MONO, fontWeight: 500 }}>
           {row.ticker}
         </div>
-        <div className="col-span-3 text-right tabular-nums text-[14px]"
+        <div className="col-span-3 text-right tabular-nums text-[13px] text-[#0E1B18]"
+          style={{ ...MONO, fontWeight: 500 }}>
+          {hasPrices
+            ? `${row.entry.toFixed(2)} → ${row.exit.toFixed(2)}`
+            : <span className="text-[#6E7F79]" style={{ fontFamily: "'Lato', sans-serif", fontWeight: 400 }}>—</span>}
+        </div>
+        <div className="col-span-2 text-right tabular-nums text-[14px]"
           style={{ color: retColor, ...MONO, fontWeight: 500 }}>
           {row.ret >= 0 ? "+" : ""}{row.ret.toFixed(2)}%
         </div>
-        <div className="col-span-3 text-right tabular-nums text-[13px]"
+        <div className="col-span-2 text-right tabular-nums text-[13px]"
           style={{ color: alphaColor, ...MONO }}>
           {row.alpha != null ? `${row.alpha >= 0 ? "+" : ""}${row.alpha.toFixed(2)}` : "—"}
         </div>
-        <div className="col-span-2 flex justify-end">
+        <div className="col-span-1 flex justify-end items-center gap-2">
           <span className="text-[10px] px-3 py-1 rounded-full tracking-wider uppercase"
             style={{
               background: row.win ? "rgba(34,148,107,0.10)" : "rgba(226,125,107,0.10)",
@@ -1225,9 +1269,101 @@ function JournalRow({ row }) {
             }}>
             {row.win ? "Beat" : "Miss"}
           </span>
+          <ChevronRight
+            size={14}
+            style={{
+              color: "#6E7F79",
+              transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+              transition: "transform 0.15s ease-out",
+            }}
+          />
         </div>
       </div>
-    </>
+
+      {/* Expanded detail — both mobile and desktop */}
+      {expanded && (
+        <div className="mx-2 md:mx-6 mb-3 mt-1 p-4 md:p-5"
+          style={{
+            background: "#F1F7F3",
+            borderRadius: 24,
+          }}>
+          {/* Header */}
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-[18px] text-[#0E1B18]" style={{ ...MONO, fontWeight: 600 }}>
+                {row.ticker}
+              </span>
+              {row.sector && row.sector !== "Other" && (
+                <span className="text-[9px] px-2.5 py-1 rounded-full tracking-wider uppercase"
+                  style={{
+                    background: "rgba(14,94,74,0.08)",
+                    color: "#0E5E4A", fontWeight: 700, ...HEADING,
+                  }}>
+                  {row.sector}
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] text-[#6E7F79] tabular-nums" style={MONO}>
+              {row.date}
+            </span>
+          </div>
+
+          {/* Prices */}
+          {hasPrices ? (
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div>
+                <div className="text-[9px] tracking-[0.15em] uppercase text-[#6E7F79] mb-1"
+                  style={{ fontWeight: 700, ...HEADING }}>
+                  Entry
+                </div>
+                <div className="text-[16px] text-[#0E1B18] tabular-nums"
+                  style={{ ...MONO, fontWeight: 500 }}>
+                  {row.entry.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] tracking-[0.15em] uppercase text-[#6E7F79] mb-1"
+                  style={{ fontWeight: 700, ...HEADING }}>
+                  Exit
+                </div>
+                <div className="text-[16px] text-[#0E1B18] tabular-nums"
+                  style={{ ...MONO, fontWeight: 500 }}>
+                  {row.exit.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] tracking-[0.15em] uppercase text-[#6E7F79] mb-1"
+                  style={{ fontWeight: 700, ...HEADING }}>
+                  Change
+                </div>
+                <div className="text-[16px] tabular-nums"
+                  style={{ color: retColor, ...MONO, fontWeight: 500 }}>
+                  {priceChange >= 0 ? "+" : ""}{priceChange.toFixed(2)}
+                  <span className="text-[11px] ml-1">
+                    ({row.ret >= 0 ? "+" : ""}{row.ret.toFixed(2)}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-[13px] text-[#6E7F79] mb-3">
+              Prices pending — will fill once Workflows C and D run.
+            </div>
+          )}
+
+          {/* Alpha line */}
+          <div className="pt-3 flex items-center justify-between gap-2"
+            style={{ borderTop: "1px solid rgba(14,94,74,0.10)" }}>
+            <span className="text-[12px] text-[#6E7F79]">
+              vs KSE-100
+            </span>
+            <span className="text-[12px]" style={{ color: alphaColor, fontWeight: 500 }}>
+              {alphaLabel}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1246,13 +1382,14 @@ function JournalRows({ rows }) {
         style={{ fontWeight: 700 }}>
         <div className="col-span-2">Date</div>
         <div className="col-span-2">Ticker</div>
-        <div className="col-span-3 text-right">Return</div>
-        <div className="col-span-3 text-right flex items-center justify-end gap-1">
+        <div className="col-span-3 text-right">Entry → Exit</div>
+        <div className="col-span-2 text-right">Return</div>
+        <div className="col-span-2 text-right flex items-center justify-end gap-1">
           <InfoTooltip content="Alpha (α) is your pick's return minus the KSE-100's return over the same period. Positive α means you beat the market.">
-            <span>α vs KSE-100</span>
+            <span>α</span>
           </InfoTooltip>
         </div>
-        <div className="col-span-2 text-right">Result</div>
+        <div className="col-span-1 text-right">Result</div>
       </div>
       {rows.map((row, i) => (
         <JournalRow key={i} row={row} />

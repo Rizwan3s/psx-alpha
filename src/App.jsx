@@ -340,6 +340,82 @@ function ErrorState({ error }) {
 }
 
 // ============================================================
+// Session banner — subtle context strip
+// ============================================================
+
+function SessionBanner({ message }) {
+  if (!message) return null;
+  return (
+    <div className="flex items-center gap-2.5 rounded-full px-4 py-2.5 mb-5 md:mb-6 text-[12px] text-[#14735C]"
+      style={{ background: "rgba(127,209,174,0.20)" }}>
+      <span className="relative flex h-1.5 w-1.5 shrink-0">
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5"
+          style={{ background: "#14735C" }} />
+      </span>
+      <span>{message}</span>
+    </div>
+  );
+}
+
+// ============================================================
+// Tooltip — click / hover popover
+// ============================================================
+
+function Tooltip({ content, children }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  return (
+    <span className="relative inline-flex items-center gap-1" ref={ref}>
+      {children}
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        className="w-3.5 h-3.5 rounded-full inline-flex items-center justify-center text-[9px] transition-opacity hover:opacity-100"
+        style={{
+          background: "rgba(110,127,121,0.15)",
+          color: "#6E7F79",
+          opacity: 0.7,
+          fontWeight: 700,
+          ...HEADING,
+        }}
+        aria-label="Learn more"
+      >
+        i
+      </button>
+      {open && (
+        <span className="absolute z-40 top-full left-1/2 mt-2 whitespace-normal text-left pointer-events-none"
+          style={{
+            transform: 'translateX(-50%)',
+            width: 220,
+            background: '#0E1B18',
+            color: '#F1F7F3',
+            padding: '10px 12px',
+            borderRadius: 14,
+            fontSize: 11,
+            lineHeight: 1.5,
+            boxShadow: '0 8px 24px rgba(14,27,24,0.25)',
+            fontFamily: "'Lato', system-ui, sans-serif",
+          }}
+        >
+          {content}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ============================================================
 // Sparkline
 // ============================================================
 
@@ -1171,7 +1247,11 @@ function JournalRows({ rows }) {
         <div className="col-span-2">Date</div>
         <div className="col-span-2">Ticker</div>
         <div className="col-span-3 text-right">Return</div>
-        <div className="col-span-3 text-right">α vs KSE-100</div>
+        <div className="col-span-3 text-right flex items-center justify-end gap-1">
+          <Tooltip content="Alpha (α) is your pick's return minus the KSE-100's return over the same period. Positive α means you beat the market.">
+            <span>α vs KSE-100</span>
+          </Tooltip>
+        </div>
         <div className="col-span-2 text-right">Result</div>
       </div>
       {rows.map((row, i) => (
@@ -1222,6 +1302,7 @@ function DashboardView({ time, marketOpen, onView, todayData, todayLoading, toda
   return (
     <>
       <Greeting time={time} marketOpen={marketOpen} />
+      <SessionBanner message={todayData?.sessionMessage} />
       <AlphaHero data={todayData} />
 
       <section className="mt-10 md:mt-14">
@@ -1266,6 +1347,7 @@ function JournalView({ data, loading, error }) {
   const [timeFilter, setTimeFilter] = useState("all");
   const [resultFilter, setResultFilter] = useState("all");
   const [sectorFilter, setSectorFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   if (loading) return <LoadingState message="Loading journal…" />;
   if (error) return <ErrorState error={error} />;
@@ -1282,6 +1364,8 @@ function JournalView({ data, loading, error }) {
   const fourWeeksAgo = new Date(pkt.getTime() - 28 * 86400000);
   const fourWeeksAgoStr = `${fourWeeksAgo.getUTCFullYear()}-${String(fourWeeksAgo.getUTCMonth() + 1).padStart(2, '0')}-${String(fourWeeksAgo.getUTCDate()).padStart(2, '0')}`;
 
+  const searchTrimmed = search.trim().toLowerCase();
+
   // Apply filters
   const filteredPicks = allPicks.filter(p => {
     if (timeFilter === "week" && p.dateSort < mondayStr) return false;
@@ -1289,6 +1373,7 @@ function JournalView({ data, loading, error }) {
     if (resultFilter === "beat" && !p.win) return false;
     if (resultFilter === "miss" && p.win) return false;
     if (sectorFilter !== "all" && (p.sector || '').toLowerCase() !== sectorFilter) return false;
+    if (searchTrimmed && !p.ticker.toLowerCase().includes(searchTrimmed)) return false;
     return true;
   });
 
@@ -1300,7 +1385,7 @@ function JournalView({ data, loading, error }) {
     ? picksWithAlpha.reduce((s, p) => s + p.alpha, 0) / picksWithAlpha.length
     : 0;
 
-  // Sector options from all picks (not filtered — so users can always switch)
+  // Sector options from all picks
   const sectorsPresent = [...new Set(allPicks.map(p => p.sector).filter(Boolean))];
 
   const timeOptions = [
@@ -1318,7 +1403,7 @@ function JournalView({ data, loading, error }) {
     ...sectorsPresent.map(s => ({ id: s.toLowerCase(), label: s })),
   ];
 
-  const isFiltered = timeFilter !== "all" || resultFilter !== "all" || sectorFilter !== "all";
+  const isFiltered = timeFilter !== "all" || resultFilter !== "all" || sectorFilter !== "all" || searchTrimmed !== "";
 
   return (
     <>
@@ -1327,6 +1412,37 @@ function JournalView({ data, loading, error }) {
         title="All picks."
         subtitle="Every call the agent has made since tracking began."
       />
+
+      {/* Search */}
+      <div className="mb-3">
+        <div className="relative">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search ticker (e.g. OGDC)"
+            className="w-full text-[13px] rounded-full pl-10 pr-4 py-3 outline-none transition-shadow focus:shadow-[0_0_0_2px_rgba(127,209,174,0.35)]"
+            style={{
+              background: "#FFFFFF",
+              color: "#0E1B18",
+              border: "none",
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          />
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6E7F79] text-[13px]">
+            🔍
+          </div>
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[16px] text-[#6E7F79] hover:text-[#0E1B18] leading-none"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Filter dropdowns */}
       <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -1341,6 +1457,7 @@ function JournalView({ data, loading, error }) {
               setTimeFilter("all");
               setResultFilter("all");
               setSectorFilter("all");
+              setSearch("");
             }}
             className="text-[12px] rounded-full px-4 py-2.5 transition-colors"
             style={{
@@ -1365,7 +1482,7 @@ function JournalView({ data, loading, error }) {
           tone="signature" />
       </div>
 
-      {/* Clear filters shortcut when a filter is active but result is empty */}
+      {/* Empty state */}
       {isFiltered && filteredPicks.length === 0 ? (
         <div className="bg-white p-8 text-center" style={{ borderRadius: 30 }}>
           <div className="text-[13px] text-[#6E7F79] mb-3">
@@ -1376,6 +1493,7 @@ function JournalView({ data, loading, error }) {
               setTimeFilter("all");
               setResultFilter("all");
               setSectorFilter("all");
+              setSearch("");
             }}
             className="text-[12px] rounded-full px-4 py-2 transition-colors"
             style={{

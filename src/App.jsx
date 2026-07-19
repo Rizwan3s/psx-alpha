@@ -147,7 +147,9 @@ const NAV = [
 
 function Header({ view, onView, time, marketOpen }) {
   return (
-    <header className="flex items-center justify-between mb-6 md:mb-8 gap-4">
+    <header className="flex items-center justify-between mb-6 md:mb-8 gap-4 md:sticky md:top-0 md:z-30 md:py-3"
+    style={{ background: "#E8F1EC" }}
+    >
       <div className="flex items-center gap-2.5 shrink-0">
         <div
           className="w-11 h-11 rounded-full flex items-center justify-center"
